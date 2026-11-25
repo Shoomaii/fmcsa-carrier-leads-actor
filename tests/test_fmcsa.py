@@ -149,6 +149,12 @@ def test_standby_http_and_mcp_endpoints():
             r = await client.get('/usdot/99999999')
             assert r.status == 404
 
+            r = await client.get('/new-authorities?states=TX&minPowerUnits=50&maxPowerUnits=10')
+            assert r.status == 400
+
+            r = await client.head('/health')
+            assert r.status == 200
+
             # MCP initialize + tools/list + tools/call
             init_resp = await client.post('/mcp', json={'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {}})
             assert init_resp.status == 200
@@ -167,6 +173,14 @@ def test_standby_http_and_mcp_endpoints():
             call_body = await call_resp.json()
             assert call_body['result']['isError'] is False
             assert call_body['result']['structuredContent']['count'] == 1
+
+            bad_call = await client.post('/mcp', json={
+                'jsonrpc': '2.0',
+                'id': 4,
+                'method': 'tools/call',
+                'params': {'name': 'search_new_carriers', 'arguments': {'states': ['TX'], 'minPowerUnits': 20, 'maxPowerUnits': 5}},
+            })
+            assert (await bad_call.json())['result']['isError'] is True
 
     asyncio.run(run())
     assert len(charges) == 4

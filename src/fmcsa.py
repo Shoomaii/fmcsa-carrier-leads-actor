@@ -292,6 +292,16 @@ class FmcsaClient:
         clean_states = normalize_states(states)
         days = max(1, min(int(days_back), 365))
         cap = max(1, min(int(limit), 1000))
+        if min_power_units is not None and min_power_units < 0:
+            raise ValueError('minPowerUnits must be >= 0.')
+        if max_power_units is not None and max_power_units < 0:
+            raise ValueError('maxPowerUnits must be >= 0.')
+        if (
+            min_power_units is not None
+            and max_power_units is not None
+            and min_power_units > max_power_units
+        ):
+            raise ValueError('minPowerUnits cannot be greater than maxPowerUnits.')
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime('%Y%m%d')
 
         clauses = ["status_code='A'", f"add_date>='{cutoff}'"]
@@ -303,7 +313,8 @@ class FmcsaClient:
         if require_contact:
             clauses.append('(phone IS NOT NULL OR email_address IS NOT NULL)')
 
-        fetch_limit = min(cap * 3 if (min_power_units is not None or max_power_units is not None) else cap, 1500)
+        has_fleet_filter = min_power_units is not None or max_power_units is not None
+        fetch_limit = min(max(cap * 6, 300), 2000) if has_fleet_filter else cap
         rows = await self._query(
             CENSUS_URL,
             {

@@ -33,13 +33,20 @@ async def main() -> None:
 
         inp = await Actor.get_input() or {}
         mode = str(inp.get('mode') or 'new_authorities').strip().lower()
-        states = normalize_states(inp.get('states'))
-        days_back = int(inp.get('daysBack') or 14)
-        min_units = inp.get('minPowerUnits')
-        max_units = inp.get('maxPowerUnits')
+        try:
+            states = normalize_states(inp.get('states'))
+            days_back = int(inp.get('daysBack') or 14)
+            min_units = int(inp['minPowerUnits']) if inp.get('minPowerUnits') not in (None, '') else None
+            max_units = int(inp['maxPowerUnits']) if inp.get('maxPowerUnits') not in (None, '') else None
+            if min_units is not None and max_units is not None and min_units > max_units:
+                raise ValueError('minPowerUnits cannot be greater than maxPowerUnits.')
+            max_leads = max(1, min(int(inp.get('maxLeads') or 100), 1000))
+        except (TypeError, ValueError) as exc:
+            await Actor.fail(status_message=f'Invalid Actor input: {exc}')
+            return
+
         for_hire_only = bool(inp.get('authorizedForHireOnly', False))
         require_contact = bool(inp.get('requireContact', True))
-        max_leads = max(1, min(int(inp.get('maxLeads') or 100), 1000))
         only_new = bool(inp.get('onlyNew', False))
 
         seen_store = None
@@ -55,8 +62,8 @@ async def main() -> None:
                 leads = await client.search_new_authorities(
                     states=states,
                     days_back=days_back,
-                    min_power_units=int(min_units) if min_units not in (None, '') else None,
-                    max_power_units=int(max_units) if max_units not in (None, '') else None,
+                    min_power_units=min_units,
+                    max_power_units=max_units,
                     authorized_for_hire_only=for_hire_only,
                     require_contact=require_contact,
                     limit=max_leads,
@@ -74,7 +81,11 @@ async def main() -> None:
                     return
                 leads = []
                 for dot in dots[:max_leads]:
-                    profile = await client.lookup_usdot(dot)
+                    try:
+                        profile = await client.lookup_usdot(dot)
+                    except ValueError as exc:
+                        await Actor.fail(status_message=f'Invalid USDOT number in usdotNumbers: {exc}')
+                        return
                     if profile:
                         leads.append(profile)
             else:

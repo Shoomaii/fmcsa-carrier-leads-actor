@@ -341,6 +341,12 @@
       return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : s;
     }
 
+    async function fetchJsonStrict(url) {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`US DOT FMCSA returned HTTP ${resp.status}. Please retry in a moment.`);
+      return await resp.json();
+    }
+
     async function directNewAuthorities(state, days, minU, maxU, forHire) {
       const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
       const clauses = ["status_code='A'", `add_date>='${cutoff}'`, '(phone IS NOT NULL OR email_address IS NOT NULL)'];
@@ -349,8 +355,8 @@
       const u = new URL('https://data.transportation.gov/resource/az4n-8mr2.json');
       u.searchParams.set('$where', clauses.join(' AND '));
       u.searchParams.set('$order', 'add_date DESC');
-      u.searchParams.set('$limit', '40');
-      const rows = await (await fetch(u)).json();
+      u.searchParams.set('$limit', (minU !== '' || maxU !== '') ? '200' : '40');
+      const rows = await fetchJsonStrict(u);
       const leads = rows.map((r) => ({
         leadType: 'new_authority',
         dotNumber: String(r.dot_number || '').replace(/^0+/, ''),
@@ -379,7 +385,7 @@
       const u = new URL('https://data.transportation.gov/resource/6eyk-hxee.json');
       u.searchParams.set('$where', clauses.join(' AND '));
       u.searchParams.set('$limit', '15');
-      const rows = await (await fetch(u)).json();
+      const rows = await fetchJsonStrict(u);
       const leads = rows.map((r) => ({
         leadType: 'pending_revocation',
         dotNumber: String(r.dot_number || '').replace(/^0+/, ''),
@@ -495,6 +501,10 @@
       const days = Number(document.getElementById('newDays').value);
       const minU = document.getElementById('minUnits').value;
       const maxU = document.getElementById('maxUnits').value;
+      if (minU !== '' && maxU !== '' && Number(minU) > Number(maxU)) {
+        showAlert('Min Trucks cannot be greater than Max Trucks.');
+        return;
+      }
       const forHire = document.getElementById('forHireOnly').checked;
       const btn = document.getElementById('btnSearchNew');
       btn.disabled = true; btn.textContent = 'Querying US DOT...';
@@ -527,15 +537,15 @@
       }
     });
 
-    document.getElementById('btnLookupDot').addEventListener('click', async () => {
+    async function runUsdotLookup() {
       hideAlert();
       const raw = document.getElementById('usdotInput').value.replace(/\D+/g, '').replace(/^0+/, '');
-      if (!raw) { showAlert('Please enter a numeric USDOT number.'); return; }
+      if (!raw || raw.length > 10) { showAlert('Please enter a valid numeric USDOT number.'); return; }
       const btn = document.getElementById('btnLookupDot');
       btn.disabled = true; btn.textContent = 'Looking up USDOT...';
       try {
         const data = await fetchApiOrFallback(`/api/usdot/${raw}`, async () => {
-          const rows = await (await fetch(`https://data.transportation.gov/resource/az4n-8mr2.json?dot_number=${raw}&$limit=1`)).json();
+          const rows = await fetchJsonStrict(`https://data.transportation.gov/resource/az4n-8mr2.json?dot_number=${raw}&$limit=1`);
           if (!rows.length) return { found: false, dotNumber: raw, carrier: null };
           const r = rows[0];
           return {
@@ -558,16 +568,21 @@
       } finally {
         btn.disabled = false; btn.textContent = 'Run USDOT 360 Lookup';
       }
+    }
+    document.getElementById('btnLookupDot').addEventListener('click', runUsdotLookup);
+    document.getElementById('usdotInput').addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') runUsdotLookup();
     });
 
     document.getElementById('btnDownloadCsv').addEventListener('click', () => {
       if (!currentLeads.length) return;
       const cols = ['leadType','dotNumber','docketNumber','legalName','officerName','phone','email','city','state','zipCode','powerUnits','addDate','insuranceCompany','sourceUrl'];
-      const escCsv = (v) => {
-        const s = String(v ?? '');
+      const escCsv = (v, col) => {
+        let s = String(v ?? '');
+        if (col !== 'powerUnits' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
         return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
-      const lines = [cols.join(','), ...currentLeads.map((r) => cols.map((c) => escCsv(r[c])).join(','))];
+      const lines = [cols.join(','), ...currentLeads.map((r) => cols.map((c) => escCsv(r[c], c)).join(','))];
       const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

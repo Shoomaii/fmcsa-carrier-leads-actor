@@ -162,9 +162,25 @@ export default {
     try {
       if (url.pathname === '/api/new-authorities') {
         const state = cleanState(url.searchParams.get('state') || 'TX');
-        const days = Math.max(1, Math.min(Number(url.searchParams.get('daysBack') || 14) || 14, 90));
-        const minUnits = url.searchParams.get('minPowerUnits') ? Number(url.searchParams.get('minPowerUnits')) : null;
-        const maxUnits = url.searchParams.get('maxPowerUnits') ? Number(url.searchParams.get('maxPowerUnits')) : null;
+        const rawDays = url.searchParams.get('daysBack');
+        const parsedDays = rawDays !== null && rawDays !== '' ? Number(rawDays) : 14;
+        if (!Number.isInteger(parsedDays) || parsedDays < 1 || parsedDays > 365) {
+          throw new Error('daysBack must be an integer between 1 and 365.');
+        }
+        const days = Math.min(parsedDays, 90);
+
+        const parseOptionalInt = (name) => {
+          const raw = url.searchParams.get(name);
+          if (raw === null || raw === '') return null;
+          const n = Number(raw);
+          if (!Number.isInteger(n) || n < 0) throw new Error(`${name} must be a non-negative integer.`);
+          return n;
+        };
+        const minUnits = parseOptionalInt('minPowerUnits');
+        const maxUnits = parseOptionalInt('maxPowerUnits');
+        if (minUnits !== null && maxUnits !== null && minUnits > maxUnits) {
+          throw new Error('minPowerUnits cannot be greater than maxPowerUnits.');
+        }
         const forHire = url.searchParams.get('forHire') === 'true';
 
         const cutoffDate = new Date(Date.now() - days * 86400 * 1000);
@@ -174,10 +190,11 @@ export default {
         if (state) clauses.push(`phy_state='${state}'`);
         if (forHire) clauses.push("classdef like '%AUTHORIZED FOR HIRE%'");
 
+        const hasFleetFilter = minUnits !== null || maxUnits !== null;
         const rows = await socrataFetch(CENSUS_URL, {
           $where: clauses.join(' AND '),
           $order: 'add_date DESC',
-          $limit: '50',
+          $limit: hasFleetFilter ? '250' : '50',
         }, env);
 
         const filtered = rows
@@ -207,11 +224,16 @@ export default {
 
         const dots = [...new Set(liRows.map((r) => String(r.dot_number || '').replace(/^0+/, '')).filter((d) => /^\d+$/.test(d)))];
         const variants = [...new Set(liRows.flatMap((r) => docketVariants(r.docket_number)))];
+        const variantChunks = [];
+        for (let i = 0; i < variants.length; i += 40) variantChunks.push(variants.slice(i, i + 40));
 
-        const [censusRows, insRows] = await Promise.all([
+        const [censusRows, ...insChunks] = await Promise.all([
           dots.length ? socrataFetch(CENSUS_URL, { $where: `dot_number in (${dots.map((d) => `'${d}'`).join(',')})`, $limit: '40' }, env) : [],
-          variants.length ? socrataFetch(INS_URL, { $where: `prefix_docket_number in (${variants.slice(0, 60).map((v) => `'${v}'`).join(',')})`, $limit: '80' }, env) : [],
+          ...variantChunks.map((chunk) =>
+            socrataFetch(INS_URL, { $where: `prefix_docket_number in (${chunk.map((v) => `'${v}'`).join(',')})`, $limit: '100' }, env)
+          ),
         ]);
+        const insRows = insChunks.flat();
 
         const censusMap = new Map(censusRows.map((r) => [String(r.dot_number || '').replace(/^0+/, ''), r]));
         const insMap = new Map();

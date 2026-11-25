@@ -143,11 +143,13 @@ def create_app(
         days_back = _parse_int(args.get('daysBack'), 'daysBack', minimum=1, maximum=365, default=14) or 14
         min_units = _parse_int(args.get('minPowerUnits'), 'minPowerUnits', minimum=0, default=None)
         max_units = _parse_int(args.get('maxPowerUnits'), 'maxPowerUnits', minimum=0, default=None)
+        if min_units is not None and max_units is not None and min_units > max_units:
+            raise ValueError('"minPowerUnits" cannot be greater than "maxPowerUnits".')
         for_hire = _parse_bool(args.get('authorizedForHireOnly'), default=False)
         req_contact = _parse_bool(args.get('requireContact'), default=True)
         limit = _parse_int(args.get('limit'), 'limit', minimum=1, maximum=HARD_MAX_LIMIT, default=DEFAULT_LIMIT) or DEFAULT_LIMIT
 
-        cache_key = f'new:{",".join(states)}:{days_back}:{min_units}:{max_units}:{for_hire}:{req_contact}:{limit}'
+        cache_key = f'new:{",".join(sorted(states))}:{days_back}:{min_units}:{max_units}:{for_hire}:{req_contact}:{limit}'
         leads = _get_cached(cache_key)
         if leads is None:
             leads = await get_client().search_new_authorities(
@@ -177,7 +179,7 @@ def create_app(
         req_contact = _parse_bool(args.get('requireContact'), default=True)
         limit = _parse_int(args.get('limit'), 'limit', minimum=1, maximum=HARD_MAX_LIMIT, default=DEFAULT_LIMIT) or DEFAULT_LIMIT
 
-        cache_key = f'rev:{",".join(states)}:{req_contact}:{limit}'
+        cache_key = f'rev:{",".join(sorted(states))}:{req_contact}:{limit}'
         leads = _get_cached(cache_key)
         if leads is None:
             leads = await get_client().search_pending_revocations(
