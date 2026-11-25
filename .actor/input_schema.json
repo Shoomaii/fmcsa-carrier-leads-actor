@@ -1,0 +1,91 @@
+{
+    "title": "FMCSA Motor Carrier Leads Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "mode": {
+            "title": "Lead Mode",
+            "type": "string",
+            "description": "Choose whether to pull newly registered active carriers (new_authorities), carriers facing pending authority revocation (pending_revocations), or look up specific USDOT numbers (usdot_lookup).",
+            "editor": "select",
+            "default": "new_authorities",
+            "enum": [
+                "new_authorities",
+                "pending_revocations",
+                "usdot_lookup"
+            ],
+            "enumTitles": [
+                "New Carrier Authorities (Census)",
+                "Pending Authority Revocations (L&I + Enriched)",
+                "Specific USDOT Number Lookup"
+            ]
+        },
+        "states": {
+            "title": "US States (2-letter codes)",
+            "type": "array",
+            "description": "Filter by physical/business state codes (e.g. TX, CA, FL, IL, GA). Leave empty to search nationwide.",
+            "editor": "stringList",
+            "default": ["TX"]
+        },
+        "daysBack": {
+            "title": "Days Back (New Authorities)",
+            "type": "integer",
+            "description": "For new_authorities mode: include active carriers added within the last N days.",
+            "default": 14,
+            "minimum": 1,
+            "maximum": 365
+        },
+        "minPowerUnits": {
+            "title": "Min Power Units (Trucks)",
+            "type": "integer",
+            "description": "Optional minimum fleet size (power units).",
+            "minimum": 0
+        },
+        "maxPowerUnits": {
+            "title": "Max Power Units (Trucks)",
+            "type": "integer",
+            "description": "Optional maximum fleet size (e.g. 25 for owner-operators & small fleets).",
+            "minimum": 0
+        },
+        "authorizedForHireOnly": {
+            "title": "Authorized For-Hire Only",
+            "type": "boolean",
+            "description": "Limit new_authorities results to Authorized For-Hire carriers (excludes private-only fleets).",
+            "default": false
+        },
+        "requireContact": {
+            "title": "Require Phone or Email",
+            "type": "boolean",
+            "description": "Skip leads that have neither a phone number nor an email address.",
+            "default": true
+        },
+        "usdotNumbers": {
+            "title": "USDOT Numbers (Lookup Mode)",
+            "type": "array",
+            "description": "Specific USDOT numbers to enrich when mode is usdot_lookup.",
+            "editor": "stringList",
+            "default": []
+        },
+        "maxLeads": {
+            "title": "Max Leads",
+            "type": "integer",
+            "description": "Maximum leads to save in this run (1–1000).",
+            "default": 100,
+            "minimum": 1,
+            "maximum": 1000
+        },
+        "onlyNew": {
+            "title": "Only New Leads (Delta Tracking)",
+            "type": "boolean",
+            "description": "Remember previously returned leadIds in a named Key-Value Store so daily schedules only emit brand-new leads.",
+            "default": false
+        },
+        "trackingKey": {
+            "title": "Delta Tracking Key",
+            "type": "string",
+            "description": "Optional list key when onlyNew is enabled (e.g. tx-small-fleets).",
+            "editor": "textfield",
+            "default": "default"
+        }
+    }
+}

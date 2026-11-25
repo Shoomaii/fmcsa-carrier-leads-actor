@@ -1,0 +1,67 @@
+{
+    "actorSpecification": 1,
+    "fields": {
+        "type": "object",
+        "properties": {
+            "leadId": { "type": "string" },
+            "leadType": { "type": "string" },
+            "dotNumber": { "type": "string" },
+            "docketNumber": { "type": "string" },
+            "legalName": { "type": "string" },
+            "dbaName": { "type": "string" },
+            "officerName": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "zipCode": { "type": "string" },
+            "powerUnits": { "type": "integer" },
+            "drivers": { "type": "integer" },
+            "addDate": { "type": "string" },
+            "commonRevocationPending": { "type": "boolean" },
+            "contractRevocationPending": { "type": "boolean" },
+            "insuranceCompany": { "type": "string" },
+            "insurancePolicyNo": { "type": "string" },
+            "insuranceEffectiveDate": { "type": "string" },
+            "scrapedAt": { "type": "string" }
+        }
+    },
+    "views": {
+        "overview": {
+            "title": "Carrier Leads",
+            "transformation": {
+                "fields": [
+                    "leadType",
+                    "dotNumber",
+                    "docketNumber",
+                    "legalName",
+                    "officerName",
+                    "phone",
+                    "email",
+                    "city",
+                    "state",
+                    "powerUnits",
+                    "addDate",
+                    "insuranceCompany"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "leadType": { "label": "Signal", "format": "text" },
+                    "dotNumber": { "label": "USDOT", "format": "text" },
+                    "docketNumber": { "label": "MC/MX", "format": "text" },
+                    "legalName": { "label": "Legal Name", "format": "text" },
+                    "officerName": { "label": "Officer", "format": "text" },
+                    "phone": { "label": "Phone", "format": "text" },
+                    "email": { "label": "Email", "format": "text" },
+                    "city": { "label": "City", "format": "text" },
+                    "state": { "label": "State", "format": "text" },
+                    "powerUnits": { "label": "Trucks", "format": "number" },
+                    "addDate": { "label": "Add Date", "format": "text" },
+                    "insuranceCompany": { "label": "Insurer", "format": "text" }
+                }
+            }
+        }
+    }
+}

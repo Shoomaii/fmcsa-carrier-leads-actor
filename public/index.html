@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FMCSA Carrier Lead Finder &amp; USDOT Lookup — Official US DOT Live Data</title>
+  <meta name="description" content="Free live US DOT FMCSA newly registered motor carriers, pending authority revocations, and USDOT insurance filing lookup. Built for commercial trucking insurance agents and freight factoring brokers." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f5;
+      --paper: #ffffff;
+      --ink: #11181c;
+      --muted: #556068;
+      --line: #dfe4e2;
+      --accent: #0f6b4f;
+      --accent-soft: #e6f4ee;
+      --warn: #b45309;
+      --warn-soft: #fef3c7;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 18px 64px; }
+    header {
+      display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+      gap: 14px; padding-bottom: 18px; border-bottom: 1px solid var(--line);
+    }
+    .brand-eyebrow {
+      font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 6px;
+    }
+    h1 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: clamp(24px, 4vw, 34px); line-height: 1.12; margin: 0; letter-spacing: -0.02em;
+    }
+    .sub { color: var(--muted); font-size: 14.5px; margin: 6px 0 0; max-width: 680px; }
+    .badge-live {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--accent-soft); color: var(--accent);
+      font-size: 12.5px; font-weight: 600; padding: 6px 11px; border-radius: 999px;
+    }
+    .dot-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px;
+    }
+    .tab {
+      border: 1px solid var(--line); background: var(--paper); color: var(--muted);
+      padding: 9px 15px; border-radius: 10px; font-weight: 600; font-size: 14px;
+      cursor: pointer; transition: all .15s ease;
+    }
+    .tab:hover { border-color: #b7c2be; color: var(--ink); }
+    .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    .card {
+      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px; margin-top: 14px;
+    }
+    .controls {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px; align-items: end;
+    }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    select, input[type="text"], input[type="number"] {
+      width: 100%; height: 40px; padding: 0 11px; border: 1px solid var(--line);
+      border-radius: 8px; font: inherit; font-size: 14px; background: #fff; color: var(--ink);
+    }
+    .check-row {
+      display: flex; align-items: center; gap: 8px; height: 40px; font-size: 13.5px; font-weight: 500;
+    }
+    .btn {
+      height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line);
+      background: #fff; color: var(--ink); font: inherit; font-weight: 600; font-size: 14px;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #0c5840; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    .status-bar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 10px; margin-top: 16px; font-size: 13.5px; color: var(--muted);
+    }
+    .alert {
+      margin-top: 12px; padding: 11px 14px; border-radius: 9px; font-size: 13.5px; font-weight: 500;
+    }
+    .alert-err { background: var(--danger-soft); color: var(--danger); }
+    .alert-info { background: var(--accent-soft); color: var(--accent); }
+
+    .table-wrap { overflow-x: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 760px; }
+    th {
+      text-align: left; padding: 10px 12px; background: #f3f5f4; color: var(--muted);
+      font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line);
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #eef1f0; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+    .pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    }
+    .pill-new { background: var(--accent-soft); color: var(--accent); }
+    .pill-rev { background: var(--warn-soft); color: var(--warn); }
+    .carrier-name { font-weight: 700; color: var(--ink); }
+    .muted { color: var(--muted); font-size: 12.5px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .profile-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px;
+    }
+    .kv { background: #f8faf9; border: 1px solid var(--line); border-radius: 9px; padding: 12px; }
+    .kv-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+    .kv-val { font-size: 15px; font-weight: 600; margin-top: 4px; word-break: break-word; }
+
+    .cta-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 26px;
+    }
+    .cta-card {
+      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px;
+    }
+    .cta-card.featured { border-color: var(--accent); background: linear-gradient(180deg, #f3faf6 0%, #ffffff 100%); }
+    .cta-card h2 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; margin: 0 0 6px; }
+    .cta-card p { font-size: 13.5px; color: var(--muted); margin: 0 0 12px; }
+    .hidden { display: none !important; }
+    footer { margin-top: 32px; font-size: 12.5px; color: var(--muted); text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="brand-eyebrow">Official US DOT FMCSA Live Data</div>
+        <h1>FMCSA Carrier Lead Finder &amp; USDOT Lookup</h1>
+        <p class="sub">Pull newly registered motor carriers, pending authority revocations, and active insurance filings directly from official <span class="mono">data.transportation.gov</span> datasets. Built for commercial trucking insurance agents &amp; freight factoring brokers.</p>
+      </div>
+      <div class="badge-live"><span class="dot-pulse"></span>Live Socrata US DOT Feed</div>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="new" id="tabNew" type="button">New Carrier Authorities</button>
+      <button class="tab" data-tab="rev" id="tabRev" type="button">Pending Revocations (Urgent)</button>
+      <button class="tab" data-tab="dot" id="tabDot" type="button">USDOT 360 Lookup</button>
+    </div>
+
+    <!-- NEW AUTHORITIES PANEL -->
+    <section class="card" id="panelNew">
+      <div class="controls">
+        <div>
+          <label for="newState">State</label>
+          <select id="newState"></select>
+        </div>
+        <div>
+          <label for="newDays">Added Within</label>
+          <select id="newDays">
+            <option value="7">Last 7 days</option>
+            <option value="14" selected>Last 14 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="60">Last 60 days</option>
+          </select>
+        </div>
+        <div>
+          <label for="minUnits">Min Trucks</label>
+          <input id="minUnits" type="number" min="0" placeholder="e.g. 1" />
+        </div>
+        <div>
+          <label for="maxUnits">Max Trucks</label>
+          <input id="maxUnits" type="number" min="0" placeholder="e.g. 25" />
+        </div>
+        <div class="check-row">
+          <input id="forHireOnly" type="checkbox" />
+          <label for="forHireOnly" style="margin:0;cursor:pointer;color:var(--ink);">Authorized For-Hire only</label>
+        </div>
+        <div>
+          <button id="btnSearchNew" class="btn btn-primary" style="width:100%;" type="button">Find New Carriers</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PENDING REVOCATIONS PANEL -->
+    <section class="card hidden" id="panelRev">
+      <div class="controls">
+        <div>
+          <label for="revState">State</label>
+          <select id="revState"></select>
+        </div>
+        <div style="grid-column: span 2;">
+          <div class="muted" style="padding-bottom:8px;">
+            Finds carriers with <span class="mono">common_rev_pend='Y'</span> or <span class="mono">contract_rev_pend='Y'</span> in FMCSA L&amp;I and automatically enriches each row with Census officer/email and active/pending insurance policy filings.
+          </div>
+        </div>
+        <div>
+          <button id="btnSearchRev" class="btn btn-primary" style="width:100%;" type="button">Find Pending Revocations</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- USDOT LOOKUP PANEL -->
+    <section class="card hidden" id="panelDot">
+      <div class="controls">
+        <div style="grid-column: span 2;">
+          <label for="usdotInput">USDOT Number</label>
+          <input id="usdotInput" type="text" inputmode="numeric" placeholder="e.g. 2247505" />
+        </div>
+        <div>
+          <button id="btnLookupDot" class="btn btn-primary" style="width:100%;" type="button">Run USDOT 360 Lookup</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="alertBox" class="alert hidden"></div>
+
+    <div id="listSection" class="hidden">
+      <div class="status-bar">
+        <span id="statusText"></span>
+        <button id="btnDownloadCsv" class="btn" type="button">Download 10-Row Sample CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Signal / Date</th>
+              <th>USDOT / MC</th>
+              <th>Carrier &amp; Officer</th>
+              <th>Direct Contact</th>
+              <th>Location</th>
+              <th>Fleet / Insurer</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="profileSection" class="card hidden"></div>
+
+    <section class="cta-grid">
+      <div class="cta-card featured">
+        <h2>Need Unlimited Daily Leads by State?</h2>
+        <p>Free web preview returns up to 10 leads per query. Automate unlimited daily new-authority &amp; pending-revocation drops directly into your CRM, Google Sheets, or inbox—zero duplicate rows via delta tracking.</p>
+        <a class="btn btn-primary" href="https://github.com/Shoomaii/fmcsa-carrier-leads-actor#monetization--daily-digest" target="_blank" rel="noopener">Get Daily State Digest ($49/mo)</a>
+      </div>
+      <div class="cta-card">
+        <h2>Developer / AI Agent? Use the Apify Actor &amp; MCP</h2>
+        <p>Run batch exports up to 1,000 leads or connect Claude / ChatGPT / n8n via Streamable HTTP MCP (<span class="mono">/mcp</span>) with pay-per-event pricing.</p>
+        <a class="btn" href="https://github.com/Shoomaii/fmcsa-carrier-leads-actor" target="_blank" rel="noopener">View Actor &amp; MCP Docs</a>
+      </div>
+    </section>
+
+    <footer>
+      Data sourced live from official US Department of Transportation FMCSA Open Data (<span class="mono">az4n-8mr2</span>, <span class="mono">6eyk-hxee</span>, <span class="mono">ypjt-5ydn</span>). Not affiliated with the US DOT or FMCSA.
+    </footer>
+  </div>
+
+  <script>
+    const STATES = [
+      ['TX','Texas'],['CA','California'],['FL','Florida'],['GA','Georgia'],['IL','Illinois'],
+      ['OH','Ohio'],['PA','Pennsylvania'],['NC','North Carolina'],['NY','New York'],['NJ','New Jersey'],
+      ['IN','Indiana'],['MI','Michigan'],['TN','Tennessee'],['VA','Virginia'],['WA','Washington'],
+      ['AZ','Arizona'],['MO','Missouri'],['CO','Colorado'],['MN','Minnesota'],['WI','Wisconsin'],
+      ['AL','Alabama'],['AK','Alaska'],['AR','Arkansas'],['CT','Connecticut'],['DE','Delaware'],
+      ['HI','Hawaii'],['IA','Iowa'],['ID','Idaho'],['KS','Kansas'],['KY','Kentucky'],
+      ['LA','Louisiana'],['MA','Massachusetts'],['MD','Maryland'],['ME','Maine'],['MS','Mississippi'],
+      ['MT','Montana'],['ND','North Dakota'],['NE','Nebraska'],['NH','New Hampshire'],['NM','New Mexico'],
+      ['NV','Nevada'],['OK','Oklahoma'],['OR','Oregon'],['RI','Rhode Island'],['SC','South Carolina'],
+      ['SD','South Dakota'],['UT','Utah'],['VT','Vermont'],['WV','West Virginia'],['WY','Wyoming'],
+      ['ALL','All US States (Nationwide)'],
+    ];
+
+    function populateStates(sel) {
+      sel.innerHTML = STATES.map(([c, n]) => `<option value="${c}">${c} — ${n}</option>`).join('');
+    }
+    populateStates(document.getElementById('newState'));
+    populateStates(document.getElementById('revState'));
+
+    let currentLeads = [];
+    const tabs = document.querySelectorAll('.tab');
+    const panels = {
+      new: document.getElementById('panelNew'),
+      rev: document.getElementById('panelRev'),
+      dot: document.getElementById('panelDot'),
+    };
+
+    tabs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        tabs.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        const key = btn.dataset.tab;
+        Object.entries(panels).forEach(([k, el]) => el.classList.toggle('hidden', k !== key));
+        hideAlert();
+      });
+    });
+
+    function showAlert(msg, kind = 'err') {
+      const box = document.getElementById('alertBox');
+      box.textContent = msg;
+      box.className = `alert alert-${kind}`;
+    }
+    function hideAlert() {
+      document.getElementById('alertBox').className = 'alert hidden';
+    }
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function fetchApiOrFallback(apiPath, directFetcher) {
+      if (location.protocol.startsWith('http')) {
+        try {
+          const resp = await fetch(apiPath);
+          if (resp.ok) return await resp.json();
+          if (resp.status !== 404) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || `HTTP ${resp.status}`);
+          }
+        } catch (e) {
+          if (!directFetcher) throw e;
+        }
+      }
+      return await directFetcher();
+    }
+
+    function fmtDate(raw) {
+      const d = String(raw || '').replace(/\D+/g, '');
+      return d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : String(raw || '').trim();
+    }
+    function fmtPhone(raw) {
+      const s = String(raw || '').trim();
+      const d = s.replace(/\D+/g, '');
+      return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : s;
+    }
+
+    async function directNewAuthorities(state, days, minU, maxU, forHire) {
+      const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
+      const clauses = ["status_code='A'", `add_date>='${cutoff}'`, '(phone IS NOT NULL OR email_address IS NOT NULL)'];
+      if (state && state !== 'ALL') clauses.push(`phy_state='${state}'`);
+      if (forHire) clauses.push("classdef like '%AUTHORIZED FOR HIRE%'");
+      const u = new URL('https://data.transportation.gov/resource/az4n-8mr2.json');
+      u.searchParams.set('$where', clauses.join(' AND '));
+      u.searchParams.set('$order', 'add_date DESC');
+      u.searchParams.set('$limit', '40');
+      const rows = await (await fetch(u)).json();
+      const leads = rows.map((r) => ({
+        leadType: 'new_authority',
+        dotNumber: String(r.dot_number || '').replace(/^0+/, ''),
+        docketNumber: '',
+        legalName: r.legal_name || '',
+        dbaName: r.dba_name || '',
+        officerName: r.company_officer_1 || r.company_officer_2 || '',
+        phone: fmtPhone(r.phone || r.cell_phone),
+        email: (r.email_address || '').toLowerCase(),
+        city: r.phy_city || '',
+        state: r.phy_state || '',
+        zipCode: r.phy_zip || '',
+        powerUnits: r.power_units !== undefined ? Number(r.power_units) : null,
+        drivers: r.total_drivers !== undefined ? Number(r.total_drivers) : null,
+        addDate: fmtDate(r.add_date),
+        insuranceCompany: '',
+        sourceUrl: `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${String(r.dot_number || '').replace(/^0+/, '')}`,
+      })).filter((r) => (minU === '' || (r.powerUnits !== null && r.powerUnits >= Number(minU))))
+         .filter((r) => (maxU === '' || (r.powerUnits !== null && r.powerUnits <= Number(maxU))));
+      return { state, daysBack: days, totalMatchedInBatch: leads.length, previewCap: 10, leads: leads.slice(0, 10) };
+    }
+
+    async function directPendingRevocations(state) {
+      const clauses = ["(common_rev_pend='Y' OR contract_rev_pend='Y')"];
+      if (state && state !== 'ALL') clauses.push(`bus_state_code='${state}'`);
+      const u = new URL('https://data.transportation.gov/resource/6eyk-hxee.json');
+      u.searchParams.set('$where', clauses.join(' AND '));
+      u.searchParams.set('$limit', '15');
+      const rows = await (await fetch(u)).json();
+      const leads = rows.map((r) => ({
+        leadType: 'pending_revocation',
+        dotNumber: String(r.dot_number || '').replace(/^0+/, ''),
+        docketNumber: r.docket_number || '',
+        legalName: r.legal_name || '',
+        dbaName: r.dba_name || '',
+        officerName: '',
+        phone: fmtPhone(r.bus_telno),
+        email: '',
+        city: r.bus_city || '',
+        state: r.bus_state_code || '',
+        zipCode: r.bus_zip_code || '',
+        powerUnits: null,
+        addDate: '',
+        insuranceCompany: r.bipd_file ? `BIPD on file: $${r.bipd_file}k` : '',
+        sourceUrl: `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${String(r.dot_number || '').replace(/^0+/, '')}`,
+      }));
+      return { state, totalMatchedInBatch: leads.length, previewCap: 10, leads: leads.slice(0, 10) };
+    }
+
+    function renderTable(data, label) {
+      currentLeads = data.leads || [];
+      document.getElementById('profileSection').classList.add('hidden');
+      const sec = document.getElementById('listSection');
+      sec.classList.remove('hidden');
+      document.getElementById('statusText').textContent =
+        `Showing ${currentLeads.length} live ${label} leads (free preview cap: ${data.previewCap || 10}).`;
+      const tbody = document.getElementById('resultsBody');
+      if (!currentLeads.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:24px;">No carriers matched those filters. Try widening Days Back or choosing a different state.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = currentLeads.map((r) => `
+        <tr>
+          <td>
+            <span class="pill ${r.leadType === 'pending_revocation' ? 'pill-rev' : 'pill-new'}">${r.leadType === 'pending_revocation' ? 'Revocation Pending' : 'New Authority'}</span>
+            ${r.addDate ? `<div class="muted mono" style="margin-top:4px;">${esc(r.addDate)}</div>` : ''}
+          </td>
+          <td class="mono">
+            <a href="${esc(r.sourceUrl)}" target="_blank" rel="noopener">DOT ${esc(r.dotNumber)}</a>
+            ${r.docketNumber ? `<div class="muted">${esc(r.docketNumber)}</div>` : ''}
+          </td>
+          <td>
+            <div class="carrier-name">${esc(r.legalName || '—')}</div>
+            ${r.officerName ? `<div class="muted">Officer: ${esc(r.officerName)}</div>` : ''}
+            ${r.dbaName ? `<div class="muted">DBA: ${esc(r.dbaName)}</div>` : ''}
+          </td>
+          <td>
+            ${r.phone ? `<div class="mono">${esc(r.phone)}</div>` : ''}
+            ${r.email ? `<div class="muted">${esc(r.email)}</div>` : ''}
+            ${!r.phone && !r.email ? '<span class="muted">—</span>' : ''}
+          </td>
+          <td>${esc([r.city, r.state].filter(Boolean).join(', '))} <span class="muted mono">${esc(r.zipCode || '')}</span></td>
+          <td>
+            ${r.powerUnits !== null && r.powerUnits !== undefined ? `<div><strong>${esc(r.powerUnits)}</strong> trucks${r.drivers ? ` · ${esc(r.drivers)} drivers` : ''}</div>` : ''}
+            ${r.insuranceCompany ? `<div class="muted">${esc(r.insuranceCompany)}</div>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderProfile(data) {
+      document.getElementById('listSection').classList.add('hidden');
+      const sec = document.getElementById('profileSection');
+      sec.classList.remove('hidden');
+      if (!data.found || !data.carrier) {
+        sec.innerHTML = `<div class="muted">No FMCSA carrier record found for USDOT <strong>${esc(data.dotNumber)}</strong>.</div>`;
+        return;
+      }
+      const c = data.carrier;
+      const filings = (c.insuranceFilings || []).map((f) => `
+        <tr>
+          <td class="mono">${esc(f.docketNumber)}</td>
+          <td>${esc(f.formCode)}</td>
+          <td>${esc(f.company)}</td>
+          <td class="mono">${esc(f.policyNo)}</td>
+          <td class="mono">${esc(f.effectiveDate)}</td>
+          <td class="mono">${f.maxCoverageThousands ? `$${esc(f.maxCoverageThousands)}k` : '—'}</td>
+        </tr>
+      `).join('');
+      sec.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <span class="pill ${c.commonRevocationPending || c.contractRevocationPending ? 'pill-rev' : 'pill-new'}">
+              ${c.commonRevocationPending || c.contractRevocationPending ? 'Pending Authority Revocation' : 'USDOT Profile'}
+            </span>
+            <h2 style="margin:6px 0 2px;font-family:'Bricolage Grotesque',sans-serif;">${esc(c.legalName)}</h2>
+            <div class="muted mono">USDOT ${esc(c.dotNumber)} ${c.docketNumber ? '· ' + esc(c.docketNumber) : ''}</div>
+          </div>
+          <a class="btn" href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">Open Official SAFER Snapshot</a>
+        </div>
+        <div class="profile-grid">
+          <div class="kv"><div class="kv-label">Officer</div><div class="kv-val">${esc(c.officerName || '—')}</div></div>
+          <div class="kv"><div class="kv-label">Phone / Email</div><div class="kv-val mono" style="font-size:13.5px;">${esc(c.phone || '—')}<br>${esc(c.email || '')}</div></div>
+          <div class="kv"><div class="kv-label">Fleet Size</div><div class="kv-val">${c.powerUnits ?? '—'} trucks · ${c.drivers ?? '—'} drivers</div></div>
+          <div class="kv"><div class="kv-label">Location</div><div class="kv-val">${esc([c.city, c.state, c.zipCode].filter(Boolean).join(', ') || '—')}</div></div>
+        </div>
+        ${filings ? `
+          <h3 style="margin:18px 0 6px;font-size:15px;">Active / Pending FMCSA Insurance Filings</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Docket</th><th>Form</th><th>Insurance Company</th><th>Policy #</th><th>Effective</th><th>Max Coverage</th></tr></thead>
+              <tbody>${filings}</tbody>
+            </table>
+          </div>
+        ` : '<p class="muted" style="margin-top:14px;">No active/pending L&amp;I insurance filings listed for this docket.</p>'}
+      `;
+    }
+
+    document.getElementById('btnSearchNew').addEventListener('click', async () => {
+      hideAlert();
+      const state = document.getElementById('newState').value;
+      const days = Number(document.getElementById('newDays').value);
+      const minU = document.getElementById('minUnits').value;
+      const maxU = document.getElementById('maxUnits').value;
+      const forHire = document.getElementById('forHireOnly').checked;
+      const btn = document.getElementById('btnSearchNew');
+      btn.disabled = true; btn.textContent = 'Querying US DOT...';
+      try {
+        const qs = new URLSearchParams({ state, daysBack: String(days), forHire: String(forHire) });
+        if (minU !== '') qs.set('minPowerUnits', minU);
+        if (maxU !== '') qs.set('maxPowerUnits', maxU);
+        const data = await fetchApiOrFallback(`/api/new-authorities?${qs}`, () => directNewAuthorities(state, days, minU, maxU, forHire));
+        renderTable(data, `${state} new-authority`);
+      } catch (err) {
+        showAlert(err.message || 'Failed to fetch new authorities.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Find New Carriers';
+      }
+    });
+
+    document.getElementById('btnSearchRev').addEventListener('click', async () => {
+      hideAlert();
+      const state = document.getElementById('revState').value;
+      const btn = document.getElementById('btnSearchRev');
+      btn.disabled = true; btn.textContent = 'Querying L&I + Census...';
+      try {
+        const qs = new URLSearchParams({ state });
+        const data = await fetchApiOrFallback(`/api/pending-revocations?${qs}`, () => directPendingRevocations(state));
+        renderTable(data, `${state} pending-revocation`);
+      } catch (err) {
+        showAlert(err.message || 'Failed to fetch pending revocations.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Find Pending Revocations';
+      }
+    });
+
+    document.getElementById('btnLookupDot').addEventListener('click', async () => {
+      hideAlert();
+      const raw = document.getElementById('usdotInput').value.replace(/\D+/g, '').replace(/^0+/, '');
+      if (!raw) { showAlert('Please enter a numeric USDOT number.'); return; }
+      const btn = document.getElementById('btnLookupDot');
+      btn.disabled = true; btn.textContent = 'Looking up USDOT...';
+      try {
+        const data = await fetchApiOrFallback(`/api/usdot/${raw}`, async () => {
+          const rows = await (await fetch(`https://data.transportation.gov/resource/az4n-8mr2.json?dot_number=${raw}&$limit=1`)).json();
+          if (!rows.length) return { found: false, dotNumber: raw, carrier: null };
+          const r = rows[0];
+          return {
+            found: true,
+            dotNumber: raw,
+            carrier: {
+              dotNumber: raw, legalName: r.legal_name, officerName: r.company_officer_1 || '',
+              phone: fmtPhone(r.phone), email: (r.email_address || '').toLowerCase(),
+              city: r.phy_city || '', state: r.phy_state || '', zipCode: r.phy_zip || '',
+              powerUnits: r.power_units ? Number(r.power_units) : null,
+              drivers: r.total_drivers ? Number(r.total_drivers) : null,
+              sourceUrl: `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${raw}`,
+              insuranceFilings: [],
+            },
+          };
+        });
+        renderProfile(data);
+      } catch (err) {
+        showAlert(err.message || 'USDOT lookup failed.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Run USDOT 360 Lookup';
+      }
+    });
+
+    document.getElementById('btnDownloadCsv').addEventListener('click', () => {
+      if (!currentLeads.length) return;
+      const cols = ['leadType','dotNumber','docketNumber','legalName','officerName','phone','email','city','state','zipCode','powerUnits','addDate','insuranceCompany','sourceUrl'];
+      const escCsv = (v) => {
+        const s = String(v ?? '');
+        return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = [cols.join(','), ...currentLeads.map((r) => cols.map((c) => escCsv(r[c])).join(','))];
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `fmcsa-carrier-leads-sample.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  </script>
+</body>
+</html>

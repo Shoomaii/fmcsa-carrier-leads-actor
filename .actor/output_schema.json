@@ -1,0 +1,11 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "FMCSA Carrier Leads Output",
+    "properties": {
+        "leads": {
+            "type": "string",
+            "title": "Carrier Leads Dataset",
+            "template": "{{links.apiDefaultDatasetUrl}}/items"
+        }
+    }
+}

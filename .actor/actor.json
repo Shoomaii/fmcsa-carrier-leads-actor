@@ -1,0 +1,18 @@
+{
+    "actorSpecification": 1,
+    "name": "fmcsa-carrier-leads",
+    "title": "US DOT FMCSA Motor Carrier Leads & Pending Insurance Revocations",
+    "description": "Live official US DOT FMCSA newly registered motor carriers, pending authority revocations, and USDOT insurance filings from data.transportation.gov. Built for commercial trucking insurance agencies, freight factoring brokers, and ELD/dispatch sales teams. Includes owner name, phone, email, fleet size, cargo flags, and active/pending insurance policy details.",
+    "version": "1.0",
+    "buildTag": "latest",
+    "input": "./input_schema.json",
+    "output": "./output_schema.json",
+    "storages": {
+        "dataset": "./dataset_schema.json"
+    },
+    "dockerfile": "../Dockerfile",
+    "minMemoryMbytes": 256,
+    "usesStandbyMode": true,
+    "webServerSchema": "./web_server_schema.json",
+    "webServerMcpPath": "/mcp"
+}

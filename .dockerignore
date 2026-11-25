@@ -1,0 +1,9 @@
+.git/
+tests/
+worker/
+public/
+wrangler.jsonc
+.pytest_cache/
+__pycache__/
+apify_storage/
+storage/

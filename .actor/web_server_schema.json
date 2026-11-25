@@ -1,0 +1,51 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "US DOT FMCSA Carrier Leads API & MCP Server",
+        "version": "1.0.0",
+        "description": "Live official US DOT FMCSA newly registered motor carriers, pending authority revocations, and USDOT insurance filings."
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health check",
+                "responses": { "200": { "description": "OK" } }
+            }
+        },
+        "/new-authorities": {
+            "get": {
+                "summary": "Search newly registered active US DOT motor carriers",
+                "parameters": [
+                    { "name": "states", "in": "query", "schema": { "type": "string" }, "description": "Comma-separated 2-letter US state codes (e.g. TX,CA)" },
+                    { "name": "daysBack", "in": "query", "schema": { "type": "integer", "default": 14 } },
+                    { "name": "minPowerUnits", "in": "query", "schema": { "type": "integer" } },
+                    { "name": "maxPowerUnits", "in": "query", "schema": { "type": "integer" } },
+                    { "name": "authorizedForHireOnly", "in": "query", "schema": { "type": "boolean", "default": false } },
+                    { "name": "requireContact", "in": "query", "schema": { "type": "boolean", "default": true } },
+                    { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 25 } }
+                ],
+                "responses": { "200": { "description": "Newly registered motor carriers" } }
+            }
+        },
+        "/pending-revocations": {
+            "get": {
+                "summary": "Search carriers with pending FMCSA authority revocation (enriched with census contacts & insurance filings)",
+                "parameters": [
+                    { "name": "states", "in": "query", "schema": { "type": "string" }, "description": "Comma-separated 2-letter US state codes (e.g. TX,FL)" },
+                    { "name": "requireContact", "in": "query", "schema": { "type": "boolean", "default": true } },
+                    { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 25 } }
+                ],
+                "responses": { "200": { "description": "Pending revocation carrier leads" } }
+            }
+        },
+        "/usdot/{dot_number}": {
+            "get": {
+                "summary": "Full USDOT 360 lookup joining Census, L&I authority, and active/pending insurance filings",
+                "parameters": [
+                    { "name": "dot_number", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": { "200": { "description": "Carrier profile with authority & insurance details" } }
+            }
+        }
+    }
+}
