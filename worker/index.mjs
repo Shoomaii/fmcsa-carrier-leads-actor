@@ -160,7 +160,7 @@ export default {
     }
 
     try {
-      if (url.pathname === '/api/new-authorities') {
+      if (url.pathname === '/api/new-registrations' || url.pathname === '/api/new-authorities') {
         const state = cleanState(url.searchParams.get('state') || 'TX');
         const rawDays = url.searchParams.get('daysBack');
         const parsedDays = rawDays !== null && rawDays !== '' ? Number(rawDays) : 14;
@@ -186,7 +186,7 @@ export default {
         const cutoffDate = new Date(Date.now() - days * 86400 * 1000);
         const cutoff = cutoffDate.toISOString().slice(0, 10).replace(/-/g, '');
 
-        const clauses = ["status_code='A'", `add_date>='${cutoff}'`, '(phone IS NOT NULL OR email_address IS NOT NULL)'];
+        const clauses = ["status_code='A'", `add_date>='${cutoff}'`, '(phone IS NOT NULL OR cell_phone IS NOT NULL OR email_address IS NOT NULL)'];
         if (state) clauses.push(`phy_state='${state}'`);
         if (forHire) clauses.push("classdef like '%AUTHORIZED FOR HIRE%'");
 
@@ -198,12 +198,12 @@ export default {
         }, env);
 
         const filtered = rows
-          .map((r) => normalizeCensus(r, 'new_authority'))
+          .map((r) => normalizeCensus(r, 'new_usdot_registration'))
           .filter((r) => (minUnits === null || (r.powerUnits !== null && r.powerUnits >= minUnits)))
           .filter((r) => (maxUnits === null || (r.powerUnits !== null && r.powerUnits <= maxUnits)));
 
         return json({
-          mode: 'new_authorities',
+          mode: 'new_usdot_registrations',
           state: state || 'ALL',
           daysBack: days,
           totalMatchedInBatch: filtered.length,

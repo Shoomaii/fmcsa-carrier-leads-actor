@@ -166,7 +166,7 @@ def create_app(
         if leads:
             await do_charge(CHARGED_EVENT, len(leads), request_id)
         return {
-            'mode': 'new_authorities',
+            'mode': 'new_usdot_registrations',
             'states': states,
             'daysBack': days_back,
             'count': len(leads),
@@ -277,6 +277,7 @@ def create_app(
 
     app.router.add_get('/', handle_health)
     app.router.add_get('/health', handle_health)
+    app.router.add_get('/new-registrations', handle_new_authorities)
     app.router.add_get('/new-authorities', handle_new_authorities)
     app.router.add_get('/pending-revocations', handle_pending_revocations)
     app.router.add_get('/usdot/{dot_number}', handle_usdot_lookup)

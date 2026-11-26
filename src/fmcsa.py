@@ -149,7 +149,7 @@ def extract_cargo_carried(row: dict[str, Any]) -> list[str]:
     return [label for key, label in CARGO_FIELDS if str(row.get(key, '')).strip().upper() == 'X']
 
 
-def normalize_census_lead(row: dict[str, Any], lead_type: str = 'new_authority') -> dict[str, Any]:
+def normalize_census_lead(row: dict[str, Any], lead_type: str = 'new_usdot_registration') -> dict[str, Any]:
     dot = _clean_str(row.get('dot_number')).lstrip('0') or _clean_str(row.get('dot_number'))
     add_date_iso = _format_yyyymmdd(row.get('add_date'))
     phone = _format_phone(row.get('phone') or row.get('cell_phone'))
@@ -158,7 +158,7 @@ def normalize_census_lead(row: dict[str, Any], lead_type: str = 'new_authority')
     power_units = _to_int(row.get('power_units'))
     drivers = _to_int(row.get('total_drivers'))
     return {
-        'leadId': f'new:{dot}:{add_date_iso or "unknown"}',
+        'leadId': f'usdot-reg:{dot}:{add_date_iso or "unknown"}',
         'leadType': lead_type,
         'dotNumber': dot,
         'docketNumber': '',
@@ -311,7 +311,7 @@ class FmcsaClient:
         if authorized_for_hire_only:
             clauses.append("classdef like '%AUTHORIZED FOR HIRE%'")
         if require_contact:
-            clauses.append('(phone IS NOT NULL OR email_address IS NOT NULL)')
+            clauses.append('(phone IS NOT NULL OR cell_phone IS NOT NULL OR email_address IS NOT NULL)')
 
         has_fleet_filter = min_power_units is not None or max_power_units is not None
         fetch_limit = min(max(cap * 6, 300), 2000) if has_fleet_filter else cap
@@ -326,7 +326,7 @@ class FmcsaClient:
 
         leads: list[dict[str, Any]] = []
         for row in rows:
-            lead = normalize_census_lead(row, lead_type='new_authority')
+            lead = normalize_census_lead(row, lead_type='new_usdot_registration')
             units = lead['powerUnits']
             if min_power_units is not None and (units is None or units < min_power_units):
                 continue

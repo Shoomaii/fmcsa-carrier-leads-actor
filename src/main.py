@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import re
 from datetime import datetime, timezone
+from typing import Any
 
 from apify import Actor
 
@@ -25,6 +26,29 @@ def store_name(tracking_key: str | None) -> str:
     return f'fmcsa-leads-{slug}-{digest}'
 
 
+def confirmed_delivered_count(push_result: Any, attempted_count: int) -> int:
+    """Return exact number of confirmed delivered items without treating charged_count == 0 as falsy."""
+    if attempted_count <= 0 or push_result is None:
+        return 0
+    charged = getattr(push_result, 'charged_count', None)
+    if charged is not None:
+        return max(0, min(int(charged), attempted_count))
+    if getattr(push_result, 'event_charge_limit_reached', False):
+        return 0
+    return attempted_count
+
+
+def update_seen_ids(existing: list[str], output: list[dict], delivered_count: int) -> list[str]:
+    """Append only confirmed delivered leadIds (up to MAX_SEEN_IDS) to the seen-ID history."""
+    if delivered_count <= 0:
+        return list(existing)
+    seen = set(existing)
+    new_ids = [r['leadId'] for r in output[:delivered_count] if r.get('leadId') and r['leadId'] not in seen]
+    if not new_ids:
+        return list(existing)
+    return (list(existing) + new_ids)[-MAX_SEEN_IDS:]
+
+
 async def main() -> None:
     async with Actor:
         if Actor.configuration.meta_origin == 'STANDBY':
@@ -32,7 +56,7 @@ async def main() -> None:
             return
 
         inp = await Actor.get_input() or {}
-        mode = str(inp.get('mode') or 'new_authorities').strip().lower()
+        mode = str(inp.get('mode') or 'new_usdot_registrations').strip().lower()
         try:
             states = normalize_states(inp.get('states'))
             days_back = int(inp.get('daysBack') or 14)
@@ -58,7 +82,7 @@ async def main() -> None:
 
         client = FmcsaClient()
         try:
-            if mode == 'new_authorities':
+            if mode in ('new_usdot_registrations', 'new_authorities'):
                 leads = await client.search_new_authorities(
                     states=states,
                     days_back=days_back,
@@ -97,16 +121,18 @@ async def main() -> None:
 
             scraped_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             output = [{**r, 'scrapedAt': scraped_at} for r in leads[:max_leads]]
+            delivered_count = 0
             if output:
                 res = await Actor.push_data(output, charged_event_name=CHARGED_EVENT)
-                pushed_count = res.charged_count or len(output)
-                if seen_store is not None:
+                delivered_count = confirmed_delivered_count(res, len(output))
+                if seen_store is not None and delivered_count > 0:
                     old_order = list(await seen_store.get_value(SEEN_KEY) or [])
-                    new_ids = [r['leadId'] for r in output[:pushed_count]]
-                    merged = (old_order + [i for i in new_ids if i not in seen])[-MAX_SEEN_IDS:]
+                    merged = update_seen_ids(old_order, output, delivered_count)
                     await seen_store.set_value(SEEN_KEY, merged)
 
-            Actor.log.info(f'FMCSA mode={mode} states={states or ["ALL"]} saved={len(output)} leads.')
+            Actor.log.info(
+                f'FMCSA mode={mode} states={states or ["ALL"]} matched={len(output)} delivered={delivered_count} leads.'
+            )
         finally:
             await client.close()
 

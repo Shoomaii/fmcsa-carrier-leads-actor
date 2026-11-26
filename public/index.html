@@ -150,12 +150,12 @@
     </header>
 
     <div class="tabs" role="tablist">
-      <button class="tab active" data-tab="new" id="tabNew" type="button">New Carrier Authorities</button>
-      <button class="tab" data-tab="rev" id="tabRev" type="button">Pending Revocations (Urgent)</button>
+      <button class="tab active" data-tab="new" id="tabNew" type="button">New USDOT Registrations</button>
+      <button class="tab" data-tab="rev" id="tabRev" type="button">Pending Authority Revocations</button>
       <button class="tab" data-tab="dot" id="tabDot" type="button">USDOT 360 Lookup</button>
     </div>
 
-    <!-- NEW AUTHORITIES PANEL -->
+    <!-- NEW USDOT REGISTRATIONS PANEL -->
     <section class="card" id="panelNew">
       <div class="controls">
         <div>
@@ -163,7 +163,7 @@
           <select id="newState"></select>
         </div>
         <div>
-          <label for="newDays">Added Within</label>
+          <label for="newDays">Registered Within</label>
           <select id="newDays">
             <option value="7">Last 7 days</option>
             <option value="14" selected>Last 14 days</option>
@@ -184,8 +184,11 @@
           <label for="forHireOnly" style="margin:0;cursor:pointer;color:var(--ink);">Authorized For-Hire only</label>
         </div>
         <div>
-          <button id="btnSearchNew" class="btn btn-primary" style="width:100%;" type="button">Find New Carriers</button>
+          <button id="btnSearchNew" class="btn btn-primary" style="width:100%;" type="button">Find New Registrations</button>
         </div>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        Sourced from FMCSA Census (<span class="mono">add_date</span>) — tracks newly registered active USDOT numbers (check <strong>Authorized For-Hire only</strong> to exclude private-only fleets without MC operating authority).
       </div>
     </section>
 
@@ -249,8 +252,8 @@
     <section class="cta-grid">
       <div class="cta-card featured">
         <h2>Need Unlimited Daily Leads by State?</h2>
-        <p>Free web preview returns up to 10 leads per query. Automate unlimited daily new-authority &amp; pending-revocation drops directly into your CRM, Google Sheets, or inbox—zero duplicate rows via delta tracking.</p>
-        <a class="btn btn-primary" href="https://github.com/Shoomaii/fmcsa-carrier-leads-actor#monetization--daily-digest" target="_blank" rel="noopener">Get Daily State Digest ($49/mo)</a>
+        <p>Free web preview returns up to 10 leads per query. Subscribe to our managed Daily State Digest ($49/mo per state bundle) — fresh new USDOT registrations &amp; pending authority revocations delivered to your inbox or Google Sheet every weekday morning with zero duplicates.</p>
+        <a class="btn btn-primary" href="mailto:jshoomaii@gmail.com?subject=FMCSA%20Daily%20State%20Lead%20Digest%20(%2449%2Fmo)&amp;body=Hi%2C%0A%0AI%27d%20like%20to%20set%20up%20the%20FMCSA%20Daily%20State%20Digest%20(%2449%2Fmo).%0A%0ATarget%20State(s)%3A%20%0AFleet%20Size%20Filter%3A%20%0ADelivery%20Email%20or%20Google%20Sheet%3A%20">Request Daily Digest Setup ($49/mo)</a>
       </div>
       <div class="cta-card">
         <h2>Developer / AI Agent? Use the Apify Actor &amp; MCP</h2>
@@ -349,7 +352,7 @@
 
     async function directNewAuthorities(state, days, minU, maxU, forHire) {
       const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
-      const clauses = ["status_code='A'", `add_date>='${cutoff}'`, '(phone IS NOT NULL OR email_address IS NOT NULL)'];
+      const clauses = ["status_code='A'", `add_date>='${cutoff}'`, '(phone IS NOT NULL OR cell_phone IS NOT NULL OR email_address IS NOT NULL)'];
       if (state && state !== 'ALL') clauses.push(`phy_state='${state}'`);
       if (forHire) clauses.push("classdef like '%AUTHORIZED FOR HIRE%'");
       const u = new URL('https://data.transportation.gov/resource/az4n-8mr2.json');
@@ -358,7 +361,7 @@
       u.searchParams.set('$limit', (minU !== '' || maxU !== '') ? '200' : '40');
       const rows = await fetchJsonStrict(u);
       const leads = rows.map((r) => ({
-        leadType: 'new_authority',
+        leadType: 'new_usdot_registration',
         dotNumber: String(r.dot_number || '').replace(/^0+/, ''),
         docketNumber: '',
         legalName: r.legal_name || '',
@@ -421,7 +424,7 @@
       tbody.innerHTML = currentLeads.map((r) => `
         <tr>
           <td>
-            <span class="pill ${r.leadType === 'pending_revocation' ? 'pill-rev' : 'pill-new'}">${r.leadType === 'pending_revocation' ? 'Revocation Pending' : 'New Authority'}</span>
+            <span class="pill ${r.leadType === 'pending_revocation' ? 'pill-rev' : 'pill-new'}">${r.leadType === 'pending_revocation' ? 'Revocation Pending' : 'New USDOT Reg'}</span>
             ${r.addDate ? `<div class="muted mono" style="margin-top:4px;">${esc(r.addDate)}</div>` : ''}
           </td>
           <td class="mono">
@@ -512,12 +515,12 @@
         const qs = new URLSearchParams({ state, daysBack: String(days), forHire: String(forHire) });
         if (minU !== '') qs.set('minPowerUnits', minU);
         if (maxU !== '') qs.set('maxPowerUnits', maxU);
-        const data = await fetchApiOrFallback(`/api/new-authorities?${qs}`, () => directNewAuthorities(state, days, minU, maxU, forHire));
-        renderTable(data, `${state} new-authority`);
+        const data = await fetchApiOrFallback(`/api/new-registrations?${qs}`, () => directNewAuthorities(state, days, minU, maxU, forHire));
+        renderTable(data, `${state} new-USDOT-registration`);
       } catch (err) {
-        showAlert(err.message || 'Failed to fetch new authorities.');
+        showAlert(err.message || 'Failed to fetch new USDOT registrations.');
       } finally {
-        btn.disabled = false; btn.textContent = 'Find New Carriers';
+        btn.disabled = false; btn.textContent = 'Find New Registrations';
       }
     });
 

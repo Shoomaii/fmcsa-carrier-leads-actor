@@ -207,3 +207,30 @@ def test_live_us_dot_fmcsa_api():
             await client.close()
 
     asyncio.run(run())
+
+
+def test_only_new_delivery_tracking_zero_and_partial_budget():
+    from types import SimpleNamespace
+    from src.main import confirmed_delivered_count, update_seen_ids
+
+    output = [{'leadId': f'usdot-reg:{i}:2026-11-25'} for i in range(1, 6)]
+
+    # Zero-budget run (charged_count == 0): must NOT suppress any undelivered leads
+    zero_res = SimpleNamespace(charged_count=0, event_charge_limit_reached=True)
+    assert confirmed_delivered_count(zero_res, len(output)) == 0
+    assert update_seen_ids(['prior-1'], output, confirmed_delivered_count(zero_res, len(output))) == ['prior-1']
+
+    # Partial-budget run (charged_count == 2 of 5): persist ONLY first 2 IDs; leads 3-5 remain eligible next run
+    partial_res = SimpleNamespace(charged_count=2, event_charge_limit_reached=True)
+    assert confirmed_delivered_count(partial_res, len(output)) == 2
+    assert update_seen_ids(['prior-1'], output, confirmed_delivered_count(partial_res, len(output))) == [
+        'prior-1',
+        'usdot-reg:1:2026-11-25',
+        'usdot-reg:2:2026-11-25',
+    ]
+
+    # Uncharged local run (charged_count is None and limit not reached): persist all attempted
+    local_res = SimpleNamespace(charged_count=None, event_charge_limit_reached=False)
+    assert confirmed_delivered_count(local_res, len(output)) == 5
+    assert len(update_seen_ids([], output, confirmed_delivered_count(local_res, len(output)))) == 5
+

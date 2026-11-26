@@ -6,16 +6,16 @@
         "mode": {
             "title": "Lead Mode",
             "type": "string",
-            "description": "Choose whether to pull newly registered active carriers (new_authorities), carriers facing pending authority revocation (pending_revocations), or look up specific USDOT numbers (usdot_lookup).",
+            "description": "Choose whether to pull newly registered active USDOT carriers from FMCSA Census (new_usdot_registrations — enable authorizedForHireOnly to exclude private-only fleets), carriers facing pending authority revocation (pending_revocations), or look up specific USDOT numbers (usdot_lookup).",
             "editor": "select",
-            "default": "new_authorities",
+            "default": "new_usdot_registrations",
             "enum": [
-                "new_authorities",
+                "new_usdot_registrations",
                 "pending_revocations",
                 "usdot_lookup"
             ],
             "enumTitles": [
-                "New Carrier Authorities (Census)",
+                "New USDOT Registrations (FMCSA Census)",
                 "Pending Authority Revocations (L&I + Enriched)",
                 "Specific USDOT Number Lookup"
             ]
