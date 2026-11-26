@@ -12,9 +12,9 @@
                 "responses": { "200": { "description": "OK" } }
             }
         },
-        "/new-authorities": {
+        "/new-registrations": {
             "get": {
-                "summary": "Search newly registered active US DOT motor carriers",
+                "summary": "Search newly registered active US DOT motor carriers (FMCSA Census add_date; alias: /new-authorities)",
                 "parameters": [
                     { "name": "states", "in": "query", "schema": { "type": "string" }, "description": "Comma-separated 2-letter US state codes (e.g. TX,CA)" },
                     { "name": "daysBack", "in": "query", "schema": { "type": "integer", "default": 14 } },
@@ -24,7 +24,7 @@
                     { "name": "requireContact", "in": "query", "schema": { "type": "boolean", "default": true } },
                     { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 25 } }
                 ],
-                "responses": { "200": { "description": "Newly registered motor carriers" } }
+                "responses": { "200": { "description": "Newly registered active USDOT motor carriers" } }
             }
         },
         "/pending-revocations": {
